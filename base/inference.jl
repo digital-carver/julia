@@ -388,7 +388,11 @@ const apply_type_tfunc = function (A::ANY, args...)
         largs == 2 && return args[2]
         args = args[2:end]
         if all(isType, args)
-            return Type{Union{map(t->t.parameters[1],args)...}}
+            try
+                return Type{Union{map(t->t.parameters[1],args)...}}
+            catch
+                return Any
+            end
         else
             return Any
         end
@@ -917,12 +921,20 @@ function abstract_call(f::ANY, fargs, argtypes::Vector{Any}, vtypes, sv::StaticV
     t !== false && return t
     if is(f,_apply) && length(fargs)>0
         af = isconstantfunc(fargs[1], sv)
-        if !is(af,false)
+        if af === false
+            aft = argtypes[1]
+            if isType(aft) && !isa(aft.parameters[1],TypeVar)
+                af = aft.parameters[1]
+            elseif isleaftype(aft) && isdefined(aft,:instance)
+                af = aft.instance
+            else
+                # TODO jb/functions: take advantage of case where non-constant `af`'s type is known
+                return Any
+            end
+        else
             af = _ieval(af)
-            return abstract_apply(af, fargs[2:end], argtypes[2:end], vtypes, sv, e)
         end
-        # TODO jb/functions: take advantage of case where non-constant `af`'s type is known
-        return Any
+        return abstract_apply(af, fargs[2:end], argtypes[2:end], vtypes, sv, e)
     end
     for i=1:(length(argtypes)-1)
         if isvarargtype(argtypes[i])
@@ -945,6 +957,15 @@ function abstract_call(f::ANY, fargs, argtypes::Vector{Any}, vtypes, sv::StaticV
             return abstract_eval_constant(_ieval(val))
         end
     end
+    if is(f,Core.kwfunc) && length(fargs)==1
+        ft = argtypes[1]
+        if isa(ft,DataType) && !ft.abstract
+            if isdefined(ft.name.mt, :kwsorter)
+                return typeof(ft.name.mt.kwsorter)
+            end
+        end
+        return Any
+    end
     if isa(f,Builtin) || isa(f,IntrinsicFunction)
         rt = builtin_tfunction(f, fargs, Tuple{argtypes...})
         return isa(rt, TypeVar) ? rt.ub : rt
@@ -965,6 +986,8 @@ function abstract_eval_call(e, vtypes, sv::StaticVarInfo)
         ft = abstract_eval(called, vtypes, sv)
         if isType(ft) && !isa(ft.parameters[1],TypeVar)
             f = ft.parameters[1]
+        elseif isleaftype(ft) && isdefined(ft,:instance)
+            f = ft.instance
         else
             # TODO jb/functions: take advantage of case where a non-constant function's type is known
             return Any

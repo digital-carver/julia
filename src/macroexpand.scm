@@ -188,11 +188,11 @@
 (define (resolve-expansion-vars- e env m inarg)
   (cond ((or (eq? e 'true) (eq? e 'false) (eq? e 'end))
          e)
-    ((symbol? e)
-     (let ((a (assq e env)))
-       (if a (cdr a)
-           (if m `(|.| ,m (quote ,e))
-           e))))
+        ((symbol? e)
+         (let ((a (assq e env)))
+           (if a (cdr a)
+               (if m `(|.| ,m (quote ,e))
+                   e))))
         ((or (not (pair? e)) (quoted? e))
          e)
         (else
@@ -201,10 +201,10 @@
            ((escape) (cadr e))
            ((using import importall export meta) (map unescape e))
            ((macrocall)
-        (if (or (eq? (cadr e) '@label) (eq? (cadr e) '@goto)) e
-            `(macrocall ,.(map (lambda (x)
-                                 (resolve-expansion-vars- x env m inarg))
-                               (cdr e)))))
+            (if (or (eq? (cadr e) '@label) (eq? (cadr e) '@goto)) e
+                `(macrocall ,.(map (lambda (x)
+                                     (resolve-expansion-vars- x env m inarg))
+                                   (cdr e)))))
            ((symboliclabel) e)
            ((symbolicgoto) e)
            ((type)
@@ -252,6 +252,28 @@
                           (resolve-expansion-vars- (cadr e) env m inarg)
                           (cadr e))
                      ,(resolve-expansion-vars- (caddr e) env m inarg))))
+
+           ((localize)
+            (let ((expr (cadr e))
+                  (lvars (cddr e)))
+              (let ((vs (delete-duplicates
+			 (expr-find-all (lambda (v)
+					  (and (symbol? v) (or (memq v lvars)
+							       (assq v env))))
+					expr identity))))
+		`(call (-> (tuple ,@vs) ,(resolve-expansion-vars- expr env m inarg))
+		       ,@vs)
+		#;(resolve-expansion-vars- (if (null? vs)
+					     expr
+					     `(call (-> (tuple ,@vs) ,expr)
+						    ,@(if (and (pair? expr) (eq? (car expr) 'escape))
+							  (map (lambda (v)
+								 (if (not (assq v env))
+								     `(escape ,v)
+								     v))
+							       vs)
+							  vs)))
+					 env m inarg))))
 
            ((let)
             (let* ((newenv (new-expansion-env-for e env))
@@ -323,6 +345,8 @@
         '())))
 
 (define (env-for-expansion e)
+  ;; TODO jb/functions don't find all assigned vars; narrow it to new vars that
+  ;; would be introduced by just *this* expression (`e`)
   (let ((globals (find-declared-vars-in-expansion e 'global)))
     (let ((v (diff (delete-duplicates
                     (append! (find-declared-vars-in-expansion e 'local)

@@ -1059,13 +1059,16 @@ jl_lambda_info_t *jl_method_cache_insert(jl_methtable_t *mt, jl_tupletype_t *typ
 
 jl_value_t *jl_mk_builtin_func(const char *name, jl_fptr_t fptr)
 {
-    jl_datatype_t *ftype = jl_new_datatype(jl_symbol(name), jl_builtin_type, jl_emptysvec,
+    jl_sym_t *sname = jl_symbol(name);
+    jl_datatype_t *ftype = jl_new_datatype(sname, jl_builtin_type, jl_emptysvec,
                                            jl_emptysvec, jl_emptysvec, 0, 0, 0);
     jl_value_t *f = jl_new_struct(ftype);
     ftype->instance = f; jl_gc_wb(ftype, f);
-    // TODO jb/functions: what should li->ast be?
     jl_lambda_info_t *li = jl_new_lambda_info(jl_nothing, jl_emptysvec, jl_core_module);
     li->fptr = fptr;
+    li->name = sname;
+    // TODO jb/functions: what should li->ast be?
+    li->ast = (jl_value_t*)jl_exprn(lambda_sym,0); jl_gc_wb(li, li->ast);
     jl_method_cache_insert(jl_gf_mtable(f), jl_anytuple_type, li);
     return f;
 }
@@ -1488,13 +1491,22 @@ JL_DLLEXPORT size_t jl_static_show(JL_STREAM *out, jl_value_t *v)
 
 JL_DLLEXPORT size_t jl_static_show_func_sig(JL_STREAM *s, jl_value_t *type)
 {
-    if (!jl_is_tuple_type(type))
+    jl_value_t *ftype = jl_first_argument_datatype(type);
+    if (ftype == NULL)
         return jl_static_show(s, type);
     size_t n = 0;
+    if (jl_nparams(ftype)==0 || ftype == ((jl_datatype_t*)ftype)->name->primary) {
+        n += jl_printf(s, "%s", jl_symbol_name(((jl_datatype_t*)ftype)->name->name));
+    }
+    else {
+        n += jl_printf(s, "(::");
+        n += jl_static_show(s, ftype);
+        n += jl_printf(s, ")");
+    }
     size_t tl = jl_nparams(type);
     n += jl_printf(s, "(");
     size_t i;
-    for (i = 0;i < tl;i++) {
+    for (i = 1; i < tl; i++) {
         jl_value_t *tp = jl_tparam(type, i);
         if (i != tl - 1) {
             n += jl_static_show(s, tp);

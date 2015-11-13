@@ -520,7 +520,7 @@ jl_methtable_t *jl_new_method_table(jl_sym_t *name, jl_module_t *module)
     return mt;
 }
 
-jl_typename_t *jl_new_typename_in(jl_sym_t *name, jl_module_t *module)
+DLLEXPORT jl_typename_t *jl_new_typename_in(jl_sym_t *name, jl_module_t *module)
 {
     jl_typename_t *tn=(jl_typename_t*)newobj((jl_value_t*)jl_typename_type, NWORDS(sizeof(jl_typename_t)));
     tn->name = name;
@@ -880,15 +880,6 @@ jl_value_t *jl_box_bool(int8_t x)
     if (x)
         return jl_true;
     return jl_false;
-}
-
-JL_DLLEXPORT jl_value_t *jl_new_box(jl_value_t *v)
-{
-    jl_value_t *box = (jl_value_t*)jl_gc_alloc_1w();
-    jl_set_typeof(box, jl_box_any_type);
-    // if (v) jl_gc_wb(box, v); // write block not needed: box was just allocated
-    *(jl_value_t**)box = v;
-    return box;
 }
 
 // Expr constructor for internal use ------------------------------------------

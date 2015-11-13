@@ -212,6 +212,7 @@ int jl_lam_vars_captured(jl_expr_t *ast);
 jl_expr_t *jl_lam_body(jl_expr_t *l);
 int jl_in_vinfo_array(jl_array_t *a, jl_sym_t *v);
 int jl_local_in_ast(jl_expr_t *ast, jl_sym_t *sym);
+jl_value_t *jl_first_argument_datatype(jl_value_t *argtypes);
 
 void jl_set_datatype_super(jl_datatype_t *tt, jl_value_t *super);
 void jl_add_constructors(jl_datatype_t *t);
@@ -220,7 +221,6 @@ jl_value_t *jl_nth_slot_type(jl_tupletype_t *sig, size_t i);
 void jl_compute_field_offsets(jl_datatype_t *st);
 jl_array_t *jl_new_array_for_deserialization(jl_value_t *atype, uint32_t ndims, size_t *dims,
                                              int isunboxed, int elsz);
-JL_DLLEXPORT jl_value_t *jl_new_box(jl_value_t *v);
 jl_lambda_info_t *jl_copy_lambda_info(jl_lambda_info_t *linfo);
 extern jl_array_t *jl_module_init_order;
 
