@@ -1207,7 +1207,7 @@ void *jl_function_ptr_by_llvm_name(char* name) {
     return (void*)(intptr_t)jl_ExecutionEngine->FindFunctionNamed(name);
 }
 
-extern "C" DLLEXPORT void *jl_global_address_by_name(char *name)
+extern "C" JL_DLLEXPORT void *jl_global_address_by_name(char *name)
 {
     return (void*)jl_ExecutionEngine->getPointerToGlobal(jl_Module->getGlobalVariable(name,true));
 }
@@ -1247,10 +1247,11 @@ extern "C" JL_DLLEXPORT
 void *jl_get_llvmf(jl_function_t *f, jl_tupletype_t *tt, bool getwrapper, bool getdeclarations)
 {
     jl_lambda_info_t *linfo = NULL;
-    JL_GC_PUSH1(&linfo);
+    JL_GC_PUSH2(&linfo, &tt);
     if (tt != NULL) {
         linfo = jl_get_specialization(f, tt, NULL);
         if (linfo == NULL) {
+            tt = jl_argtype_with_function(f, tt);
             linfo = jl_method_lookup_by_type(jl_gf_mtable(f), tt, 0, 0);
             if (linfo == NULL) {
                 JL_GC_POP();
@@ -2420,7 +2421,7 @@ static bool emit_builtin_call(jl_cgval_t *ret, jl_value_t *f, jl_value_t **args,
                     jl_cgval_t arg1 = emit_expr(args[1], ctx);
                     *ret = mark_julia_type(
                             builder.CreateICmpEQ(emit_typeof(arg1),
-                                                literal_pointer_val(tp0)),
+                                                 literal_pointer_val(tp0)),
                             false,
                             jl_bool_type);
                     JL_GC_POP();
