@@ -21,9 +21,6 @@ JL_DLLEXPORT jl_value_t *jl_false;
 jl_tvar_t     *jl_typetype_tvar;
 jl_datatype_t *jl_typetype_type;
 jl_value_t    *jl_ANY_flag;
-jl_datatype_t *jl_box_type;
-jl_value_t *jl_box_any_type;
-jl_typename_t *jl_box_typename;
 
 jl_datatype_t *jl_typector_type;
 

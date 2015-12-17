@@ -3476,14 +3476,6 @@ void jl_init_types(void)
                                 jl_bool_type, jl_bool_type),
                         0, 1, 4);
 
-    jl_box_type =
-        jl_new_datatype(jl_symbol("Box"),
-                        jl_any_type, jl_emptysvec,
-                        jl_svec(1, jl_symbol("contents")),
-                        jl_svec(1, jl_any_type), 0, 1, 0);
-    jl_box_typename = jl_box_type->name;
-    jl_box_any_type = (jl_value_t*)jl_box_type;
-
     jl_typector_type =
         jl_new_datatype(jl_symbol("TypeConstructor"),
                         jl_type_type, jl_emptysvec,
@@ -3545,7 +3537,6 @@ void jl_init_types(void)
     jl_compute_field_offsets(jl_topnode_type);
     jl_compute_field_offsets(jl_module_type);
     jl_compute_field_offsets(jl_lambda_info_type);
-    jl_compute_field_offsets(jl_box_type);
     jl_compute_field_offsets(jl_typector_type);
     jl_compute_field_offsets(jl_simplevector_type);
     jl_simplevector_type->pointerfree = 0;
