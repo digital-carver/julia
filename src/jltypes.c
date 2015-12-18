@@ -3185,6 +3185,7 @@ void jl_init_types(void)
     jl_any_type = jl_new_abstracttype((jl_value_t*)jl_symbol("Any"), NULL, jl_emptysvec);
     jl_any_type->super = jl_any_type;
     jl_type_type = jl_new_abstracttype((jl_value_t*)jl_symbol("Type"), jl_any_type, jl_emptysvec);
+    jl_type_type->name->mt = jl_new_method_table(jl_type_type->name->name, jl_current_module);
 
     // initialize them. lots of cycles.
     jl_datatype_type->name = jl_new_typename(jl_symbol("DataType"));
@@ -3219,6 +3220,7 @@ void jl_init_types(void)
 
     jl_typename_type->name = jl_new_typename(jl_symbol("TypeName"));
     jl_typename_type->name->primary = (jl_value_t*)jl_typename_type;
+    jl_typename_type->name->mt = jl_new_method_table(jl_typename_type->name->name, jl_current_module);
     jl_typename_type->super = jl_any_type;
     jl_typename_type->parameters = jl_emptysvec;
     jl_typename_type->name->names = jl_svec(8, jl_symbol("name"), jl_symbol("module"),
@@ -3239,6 +3241,7 @@ void jl_init_types(void)
 
     jl_methtable_type->name = jl_new_typename(jl_symbol("MethodTable"));
     jl_methtable_type->name->primary = (jl_value_t*)jl_methtable_type;
+    jl_methtable_type->name->mt = jl_new_method_table(jl_methtable_type->name->name, jl_current_module);
     jl_methtable_type->super = jl_any_type;
     jl_methtable_type->parameters = jl_emptysvec;
     jl_methtable_type->name->names = jl_svec(8, jl_symbol("name"), jl_symbol("defs"),
@@ -3258,6 +3261,7 @@ void jl_init_types(void)
 
     jl_sym_type->name = jl_new_typename(jl_symbol("Symbol"));
     jl_sym_type->name->primary = (jl_value_t*)jl_sym_type;
+    jl_sym_type->name->mt = jl_new_method_table(jl_sym_type->name->name, jl_current_module);
     jl_sym_type->super = jl_any_type;
     jl_sym_type->parameters = jl_emptysvec;
     jl_sym_type->name->names = jl_emptysvec;
@@ -3274,6 +3278,7 @@ void jl_init_types(void)
 
     jl_simplevector_type->name = jl_new_typename(jl_symbol("SimpleVector"));
     jl_simplevector_type->name->primary = (jl_value_t*)jl_simplevector_type;
+    jl_simplevector_type->name->mt = jl_new_method_table(jl_simplevector_type->name->name, jl_current_module);
     jl_simplevector_type->super = jl_any_type;
     jl_simplevector_type->parameters = jl_emptysvec;
     jl_simplevector_type->name->names = jl_svec(1, jl_symbol("length"));
