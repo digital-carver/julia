@@ -2736,27 +2736,27 @@ So far only the second case can actually occur.
   (let ((n (length P)))
     `(thunk
       (lambda ()
-	((,@(map (lambda (p) `(,p Any 18)) P))
-	 () 0 ())
-	(block (global ,name) (const ,name)
-	       ,@(map (lambda (p) `(= ,p (call (top TypeVar) ',p (top Any) true))) P)
-	       (composite_type ,name (call (top svec) ,@P)
-			       (call (top svec) ,@(map (lambda (v) `',v) fields))
-			       ,super
-			       (call (top svec) ,@types) #f ,(length fields))
-	       (return (null)))))))
+        ((,@(map (lambda (p) `(,p Any 18)) P))
+         () 0 ())
+        (block (global ,name) (const ,name)
+               ,@(map (lambda (p) `(= ,p (call (top TypeVar) ',p (top Any) true))) P)
+               (composite_type ,name (call (top svec) ,@P)
+                               (call (top svec) ,@(map (lambda (v) `',v) fields))
+                               ,super
+                               (call (top svec) ,@types) #f ,(length fields))
+               (return (null)))))))
 
 ;; ... and without parameters
 (define (type-for-closure name fields super)
   `(thunk (lambda ()
-	    (() () 0 ())
-	    (block (global ,name) (const ,name)
-		   (composite_type ,name (call (top svec))
-				   (call (top svec) ,@(map (lambda (v) `',v) fields))
-				   ,super
-				   (call (top svec) ,@(map (lambda (v) 'Any) fields))
-				   #f ,(length fields))
-		   (return (null))))))
+            (() () 0 ())
+            (block (global ,name) (const ,name)
+                   (composite_type ,name (call (top svec))
+                                   (call (top svec) ,@(map (lambda (v) `',v) fields))
+                                   ,super
+                                   (call (top svec) ,@(map (lambda (v) 'Any) fields))
+                                   #f ,(length fields))
+                   (return (null))))))
 
 (define (vinfo:not-capt vi)
   (list (car vi) (cadr vi) (logand (caddr vi) (lognot 5))))
@@ -3143,8 +3143,8 @@ So far only the second case can actually occur.
                     (compile (cadddr e) break-labels)
                     (if (not tail)
                         (set-car! (cdr end-jump) (make&mark-label)))))
-            ((block) (for-each (lambda (x) (compile x break-labels))
-                               (cdr e)))
+            ((block body) (for-each (lambda (x) (compile x break-labels))
+                                    (cdr e)))
             ((_while)
              (let ((test-blk (cadr e))
                    (endl (make-label)))
@@ -3302,12 +3302,6 @@ So far only the second case can actually occur.
 	    (loop (cdr stmts)))))))
 
 ;; expander entry point
-
-(define (julia-expand-for-cl-convert ex)  ;; expand up to closure-convert
-  (analyze-variables
-   (flatten-scopes
-    (identify-locals
-     (julia-expand0 ex)))))
 
 (define (julia-expand1 ex)
   (to-goto-form
