@@ -934,7 +934,7 @@ static void jl_serialize_lambdas_from_mod(ios_t *s, jl_module_t *m)
             if (b->owner == m && b->value && b->constp) {
                 if (jl_is_datatype(b->value)) {
                     jl_methtable_t *mt = ((jl_datatype_t*)b->value)->name->mt;
-                    if (((jl_datatype_t*)b->value)->name->name == b->name && mt->module == m) {
+                    if (mt && ((jl_datatype_t*)b->value)->name->name == b->name && mt->module == m) {
                         jl_serialize_methtable_from_mod(s, mt, 0);
                         jl_serialize_methtable_from_mod(s, mt, 1);
                     }
