@@ -760,7 +760,7 @@ function invoke_tfunc(f::ANY, types::ANY, argtype::ANY)
     if is(argtype,Bottom)
         return Bottom
     end
-    ft = isa(f,Type) ? Type{f} : typeof(f)
+    ft = type_typeof(f)
     types = Tuple{ft, types.parameters...}
     argtype = Tuple{ft, argtype.parameters...}
     meth = ccall(:jl_gf_invoke_lookup, Any, (Any,), types)
@@ -890,7 +890,7 @@ function pure_eval_call(f::ANY, fargs, argtypes::ANY, sv, e)
     end
     meth = meth[1]::SimpleVector
     linfo = try
-        func_for_method(meth[3], atype, meth[2])
+        func_for_method(meth[3], meth[1], meth[2])
     catch
         NF
     end
@@ -2247,16 +2247,16 @@ function inlineable(f::ANY, ft::ANY, e::Expr, atype::ANY, sv::StaticVarInfo, enc
         return NF
     end
     meth = meth[1]::SimpleVector
+    metharg = meth[1]
     fatype = Tuple{ft, atypes...}
     linfo = try
-        func_for_method(meth[3],fatype,meth[2])
+        func_for_method(meth[3],metharg,meth[2])
     catch
         NF
     end
     if linfo === NF
         return NF
     end
-    metharg = meth[1]
     methsp = meth[2]
     methfunc = meth[3].func
     methsig = meth[3].sig

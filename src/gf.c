@@ -902,6 +902,9 @@ JL_DLLEXPORT jl_lambda_info_t *jl_instantiate_staged(jl_methlist_t *m, jl_tuplet
                                          linenum
                                          );
     jl_cellset(body->args, 0, linenode);
+    assert(jl_nparams(tt) == jl_array_len(oldargnames) ||
+           (jl_is_rest_arg(jl_cellref(oldargnames,jl_array_len(oldargnames)-1)) &&
+            (jl_nparams(tt) >= jl_array_len(oldargnames)-1)));
     jl_cellset(body->args, 1, jl_call_method_internal(func, jl_svec_data(tt->parameters), jl_nparams(tt)));
     jl_cellset(ex->args, 1, jl_exprn(jl_symbol("scope-block"), 1));
     jl_cellset(((jl_expr_t*)jl_exprarg(ex,1))->args, 0, body);
