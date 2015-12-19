@@ -1462,11 +1462,11 @@ jl_tupletype_t *jl_argtype_with_function(jl_function_t *f, jl_tupletype_t *types
     return (jl_tupletype_t*)tt;
 }
 
-jl_lambda_info_t *jl_get_specialization(jl_function_t *f, jl_tupletype_t *types)
+jl_lambda_info_t *jl_get_specialization(jl_function_t *f, jl_tupletype_t *types, void *cyclectx)
 {
     jl_tupletype_t *tt = jl_argtype_with_function(f,types);
     JL_GC_PUSH1(&tt);
-    jl_lambda_info_t *res = jl_get_specialization1((jl_tupletype_t*)tt);
+    jl_lambda_info_t *res = jl_get_specialization1((jl_tupletype_t*)tt, cyclectx);
     JL_GC_POP();
     return res;
 }
