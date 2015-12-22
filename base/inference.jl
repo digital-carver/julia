@@ -647,32 +647,7 @@ let stagedcache=Dict{Any,Any}()
     end
 end
 
-function abstract_call_gf(f::ANY, fargs, argtype::ANY, e)
-    argtypes = argtype.parameters
-    tm = _topmod()
-    if length(argtypes)>1 && argtypes[2]===Int && (argtypes[1] <: Tuple ||
-       (isa(argtypes[1], DataType) && isdefined(Main, :Base) && isdefined(Main.Base, :Pair) &&
-        (argtypes[1]::DataType).name === Main.Base.Pair.name))
-        # allow tuple indexing functions to take advantage of constant
-        # index arguments.
-        if istopfunction(tm, f, :getindex)
-            return getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
-        elseif istopfunction(tm, f, :next)
-            t1 = getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
-            return t1===Bottom ? Bottom : Tuple{t1, Int}
-        elseif istopfunction(tm, f, :indexed_next)
-            t1 = getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
-            return t1===Bottom ? Bottom : Tuple{t1, Int}
-        end
-    end
-    if istopfunction(tm, f, :promote_type) || istopfunction(tm, f, :typejoin)
-        return Type
-    end
-    ft = isa(f,Type) ? Type{f} : typeof(f)
-    return abstract_call_gf_by_type(ft, f, fargs, argtype, e)
-end
-
-function abstract_call_gf_by_type(ft::ANY, f::ANY, fargs, argtype::ANY, e)
+function abstract_call_gf_by_type(ft::ANY, f::ANY, argtype::ANY, e)
     tm = _topmod()
     # don't consider more than N methods. this trades off between
     # compiler performance and generated code performance.
@@ -964,14 +939,12 @@ function abstract_call(f::ANY, fargs, argtypes::Vector{Any}, vtypes, sv::StaticV
                 return invoke_tfunc(af, sig.parameters[1], Tuple{argtypes[3:end]...})
             end
         end
-    end
-    if is(f,getfield)
+    elseif is(f,getfield)
         val = isconstantref(e, sv)
         if !is(val,false)
             return abstract_eval_constant(_ieval(val))
         end
-    end
-    if is(f,Core.kwfunc) && length(fargs)==1
+    elseif is(f,Core.kwfunc) && length(fargs)==1
         ft = argtypes[1]
         if isa(ft,DataType) && !ft.abstract
             if isdefined(ft.name.mt, :kwsorter)
@@ -984,15 +957,39 @@ function abstract_call(f::ANY, fargs, argtypes::Vector{Any}, vtypes, sv::StaticV
         rt = builtin_tfunction(f, fargs, Tuple{argtypes...})
         return isa(rt, TypeVar) ? rt.ub : rt
     end
-    return abstract_call_gf(f, fargs, Tuple{argtypes...}, e)
+
+    # handle generic function
+    argtype = Tuple{argtypes...}
+    tm = _topmod()
+    if length(argtypes)>1 && argtypes[2]===Int && (argtypes[1] <: Tuple ||
+       (isa(argtypes[1], DataType) && isdefined(Main, :Base) && isdefined(Main.Base, :Pair) &&
+        (argtypes[1]::DataType).name === Main.Base.Pair.name))
+        # allow tuple indexing functions to take advantage of constant
+        # index arguments.
+        if istopfunction(tm, f, :getindex)
+            return getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
+        elseif istopfunction(tm, f, :next)
+            t1 = getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
+            return t1===Bottom ? Bottom : Tuple{t1, Int}
+        elseif istopfunction(tm, f, :indexed_next)
+            t1 = getfield_tfunc(fargs, argtypes[1], argtypes[2])[1]
+            return t1===Bottom ? Bottom : Tuple{t1, Int}
+        end
+    end
+    if istopfunction(tm, f, :promote_type) || istopfunction(tm, f, :typejoin)
+        return Type
+    end
+    ft = isa(f,Type) ? Type{f} : typeof(f)
+    return abstract_call_gf_by_type(ft, f, argtype, e)
 end
 
 function abstract_eval_call(e, vtypes, sv::StaticVarInfo)
-    fargs = e.args[2:end]
-    argtypes = Any[abstract_eval(a, vtypes, sv) for a in fargs]
+    args = e.args
+    na = length(args)
+    argtypes = Any[abstract_eval(args[i], vtypes, sv) for i = 2:na]
     #print("call ", e.args[1], argtypes, "\n\n")
-    if _any(x->is(x,Bottom), argtypes)
-        return Bottom
+    for x in argtypes
+        x === Bottom && return Bottom
     end
     called = e.args[1]
     func = isconstantfunc(called, sv)
@@ -1010,7 +1007,7 @@ function abstract_eval_call(e, vtypes, sv::StaticVarInfo)
             end
             # non-constant function, but type is known
             if isleaftype(ft) && !(ft <: Builtin) && !(ft <: IntrinsicFunction)
-                return abstract_call_gf_by_type(ft, nothing, fargs, Tuple{argtypes...}, e)
+                return abstract_call_gf_by_type(ft, nothing, Tuple{argtypes...}, e)
             end
             return Any
         end
@@ -1022,26 +1019,24 @@ function abstract_eval_call(e, vtypes, sv::StaticVarInfo)
         # issue #11997
         called.typ = abstract_eval_constant(f)
     end
-    return abstract_call(f, fargs, argtypes, vtypes, sv, e)
+    return abstract_call(f, args[2:end], argtypes, vtypes, sv, e)
 end
 
 function abstract_eval(e::ANY, vtypes, sv::StaticVarInfo)
-    if isa(e,QuoteNode)
-        v = (e::QuoteNode).value
-        return type_typeof(v)
-    elseif isa(e,TopNode)
-        return abstract_eval_global(_topmod(), (e::TopNode).name)
-    elseif isa(e,Symbol)
-        return abstract_eval_symbol(e::Symbol, vtypes, sv)
-    elseif isa(e,SymbolNode)
-        return abstract_eval_symbol((e::SymbolNode).name, vtypes, sv)
-    elseif isa(e,GenSym)
-        return abstract_eval_gensym(e::GenSym, sv)
-    elseif isa(e,GlobalRef)
-        return abstract_eval_global(e.mod, e.name)
-    end
-
     if !isa(e,Expr)
+        if isa(e,TopNode)
+            return abstract_eval_global(_topmod(), (e::TopNode).name)
+        elseif isa(e,Symbol)
+            return abstract_eval_symbol(e::Symbol, vtypes, sv)
+        elseif isa(e,SymbolNode)
+            return abstract_eval_symbol((e::SymbolNode).name, vtypes, sv)
+        elseif isa(e,GenSym)
+            return abstract_eval_gensym(e::GenSym, sv)
+        elseif isa(e,GlobalRef)
+            return abstract_eval_global(e.mod, e.name)
+        elseif isa(e,QuoteNode)
+            return type_typeof((e::QuoteNode).value)
+        end
         return abstract_eval_constant(e)
     end
     e = e::Expr
@@ -1380,7 +1375,7 @@ typeinf(linfo,atypes::ANY,sparams::ANY,def) = typeinf(linfo,atypes,sparams,def,t
 CYCLE_ID = 1
 
 #trace_inf = false
-#enable_trace_inf() = (global trace_inf=true)
+#enable_trace_inf(on) = (global trace_inf=on)
 
 # def is the original unspecialized version of a method. we aggregate all
 # saved type inference data there.
