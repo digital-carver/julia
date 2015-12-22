@@ -35,6 +35,22 @@ This dispatch process is performed by ``jl_apply_generic``, which takes two argu
 a pointer to an array of the values f, x, and y, and the number of values (in this
 case 3).
 
+Throughout the system, there are two kinds of APIs that handle functions and argument
+lists: those that accept the function and arguments separately, and those that accept
+a single argument structure. In the first kind of API, the "arguments" part does *not*
+contain information about the function, since that is passed separately. In the
+second kind of API, the function is the first element of the argument structure.
+
+For example, the following function for looking up a specialization accepts a single
+tuple type, so the first element of the tuple type will be the type of the function::
+
+    jl_lambda_info_t *jl_get_specialization1(jl_tupletype_t *types, void *cyclectx);
+
+This entry point for the same functionality accepts the function separately, so the
+``types`` tuple does not contain the type of the function::
+
+    jl_lambda_info_t *jl_get_specialization(jl_function_t *f, jl_tupletype_t *types, void *cyclectx);
+
 
 Adding methods
 --------------
