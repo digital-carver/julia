@@ -1250,12 +1250,15 @@ function splice!(a::Vector, i::Integer, ins=_default_splice)
     m = length(ins)
     if m == 0
         _deleteat!(a, i, 1)
-    elseif m == 1
-        a[i] = ins[1]
-    else
+        return v
+    end
+
+    # Throw any convert errors before changing the shape of the array
+    a[i] = ins[1]
+    if m > 1
         _growat!(a, i, m-1)
-        k = 1
-        for x in ins
+        k = 2
+        for x in ins[2:end]
             a[i+k-1] = x
             k += 1
         end
@@ -1292,7 +1295,7 @@ julia> A
  -1
 ```
 """
-function splice!(a::Vector, r::UnitRange{<:Integer}, ins=_default_splice)
+function splice!(a::Vector{T}, r::UnitRange{<:Integer}, ins=_default_splice) where T
     v = a[r]
     m = length(ins)
     if m == 0
@@ -1305,6 +1308,8 @@ function splice!(a::Vector, r::UnitRange{<:Integer}, ins=_default_splice)
     l = last(r)
     d = length(r)
 
+    # Throw any convert errors before changing the shape of the array
+    head = convert(T, ins[1])
     if m < d
         delta = d - m
         _deleteat!(a, (f - 1 < n - l) ? f : (l - delta + 1), delta)
@@ -1312,8 +1317,9 @@ function splice!(a::Vector, r::UnitRange{<:Integer}, ins=_default_splice)
         _growat!(a, (f - 1 < n - l) ? f : (l + 1), m - d)
     end
 
-    k = 1
-    for x in ins
+    a[f] = head
+    k = 2
+    for x in ins[2:end]
         a[f+k-1] = x
         k += 1
     end
