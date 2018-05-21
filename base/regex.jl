@@ -254,7 +254,8 @@ function _replace(io, repl_s::SubstitutionString, str, r, re)
     GROUP_CHAR = 'g'
     LBRACKET = '<'
     RBRACKET = '>'
-    repl = repl_s.string
+    keep_esc = [SUB_CHAR, GROUP_CHAR, collect('0':'9')...]
+    repl = unescape_string(repl_s.string, keep_esc)
     i = firstindex(repl)
     e = lastindex(repl)
     while i <= e
